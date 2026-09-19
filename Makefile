@@ -1,4 +1,4 @@
-.PHONY: test build run dev fmt vet clean docker-build docker-run
+.PHONY: test build run dev fmt fmt-check vet clean docker-build docker-run
 
 test:
 	go test ./... -v
@@ -14,6 +14,14 @@ dev:
 
 fmt:
 	go fmt ./...
+
+fmt-check:
+	@unformatted=$$(gofmt -l .); \
+	if [ -n "$$unformatted" ]; then \
+		echo "The following files are not gofmt'd:"; \
+		echo "$$unformatted"; \
+		exit 1; \
+	fi
 
 vet:
 	go vet ./...
