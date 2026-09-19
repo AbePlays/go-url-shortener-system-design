@@ -10,7 +10,8 @@ import (
 )
 
 type Handler struct {
-	store *store.UrlStore
+	store   *store.UrlStore
+	baseUrl string
 }
 
 type ShortenRequest struct {
@@ -22,9 +23,10 @@ type ShortenResponse struct {
 	Url       string `json:"url"`
 }
 
-func New(store *store.UrlStore) *Handler {
+func New(store *store.UrlStore, baseUrl string) *Handler {
 	return &Handler{
-		store: store,
+		store:   store,
+		baseUrl: baseUrl,
 	}
 }
 
@@ -42,7 +44,7 @@ func (handler *Handler) ShortenHandler(w http.ResponseWriter, req *http.Request)
 	}
 
 	shortCode := handler.store.AddUrl(params.Url)
-	redirectUrl := fmt.Sprintf("http://localhost:8080/%s", shortCode)
+	redirectUrl := fmt.Sprintf("%s/%s", handler.baseUrl, shortCode)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(ShortenResponse{ShortCode: shortCode, Url: redirectUrl})

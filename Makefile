@@ -1,4 +1,4 @@
-.PHONY: test build run dev fmt vet clean
+.PHONY: test build run dev fmt vet clean docker-build docker-run
 
 test:
 	go test ./... -v
@@ -20,3 +20,9 @@ vet:
 
 clean:
 	rm -rf bin/ tmp/
+
+docker-build:
+	docker build -t url-shortener .
+
+docker-run:
+	docker run -p 8080:8080 url-shortener

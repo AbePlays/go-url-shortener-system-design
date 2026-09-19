@@ -13,7 +13,7 @@ import (
 
 func TestShortenAndRedirect(t *testing.T) {
 	s := store.New()
-	h := api.New(s)
+	h := api.New(s, "http://localhost:8080")
 
 	body, err := json.Marshal(api.ShortenRequest{Url: "https://example.com"})
 	if err != nil {
