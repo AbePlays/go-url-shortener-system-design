@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -11,20 +12,31 @@ import (
 
 	"github.com/AbePlays/go-url-shortener-system-design/internal/api"
 	"github.com/AbePlays/go-url-shortener-system-design/internal/store"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
-	port, baseUrl := getEnvKeys()
+	config := getConfig()
 
-	urlStore := store.New()
-	handler := api.New(urlStore, baseUrl)
+	db, err := sql.Open("pgx", config.DatabaseUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	if err := db.Ping(); err != nil {
+		log.Fatal(err)
+	}
+
+	urlStore := store.New(db)
+	handler := api.New(urlStore, config.BaseUrl)
 
 	mux := http.NewServeMux()
 	mux.Handle("POST /api/shorten", api.LoggingMiddleware(http.HandlerFunc(handler.ShortenHandler)))
 	mux.Handle("GET /{code}", api.LoggingMiddleware(http.HandlerFunc(handler.RedirectHandler)))
 
 	server := &http.Server{
-		Addr:    ":" + port,
+		Addr:    ":" + config.Port,
 		Handler: mux,
 	}
 
@@ -49,15 +61,30 @@ func main() {
 	log.Println("server shut down gracefully")
 }
 
-func getEnvKeys() (string, string) {
-	port := os.Getenv("PORT")
-	baseUrl := os.Getenv("BASE_URL")
-	if port == "" {
-		log.Fatal("PORT environment variable not set")
+type Config struct {
+	Port        string
+	BaseUrl     string
+	DatabaseUrl string
+}
+
+func requireEnv(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatalf("%s environment variable not set", key)
 	}
-	if baseUrl == "" {
-		log.Fatal("BASE_URL environment variable not set")
+	return value
+}
+
+func getConfig() Config {
+	port := requireEnv("PORT")
+	baseUrl := requireEnv("BASE_URL")
+	databaseUrl := requireEnv("DATABASE_URL")
+
+	config := Config{
+		Port:        port,
+		BaseUrl:     baseUrl,
+		DatabaseUrl: databaseUrl,
 	}
 
-	return port, baseUrl
+	return config
 }

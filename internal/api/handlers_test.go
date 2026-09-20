@@ -2,17 +2,43 @@ package api_test
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/AbePlays/go-url-shortener-system-design/internal/api"
 	"github.com/AbePlays/go-url-shortener-system-design/internal/store"
 )
 
+func testDB(t *testing.T) *sql.DB {
+	t.Helper()
+
+	dbUrl := os.Getenv("DATABASE_URL")
+	if dbUrl == "" {
+		t.Skip("DATABASE_URL not set, skipping test that requires a real database")
+	}
+
+	db, err := sql.Open("pgx", dbUrl)
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	if err := db.Ping(); err != nil {
+		t.Fatalf("failed to ping database: %v", err)
+	}
+
+	return db
+}
+
 func TestShortenAndRedirect(t *testing.T) {
-	s := store.New()
+	db := testDB(t)
+	s := store.New(db)
 	h := api.New(s, "http://localhost:8080")
 
 	body, err := json.Marshal(api.ShortenRequest{Url: "https://example.com"})
@@ -37,6 +63,10 @@ func TestShortenAndRedirect(t *testing.T) {
 	if shortenResp.ShortCode == "" {
 		t.Fatal("expected non-empty ShortCode, got empty string")
 	}
+
+	t.Cleanup(func() {
+		_, _ = db.Exec("DELETE FROM urls WHERE code = $1", shortenResp.ShortCode)
+	})
 
 	redirectReq := httptest.NewRequest(http.MethodGet, "/"+shortenResp.ShortCode, nil)
 	redirectReq.SetPathValue("code", shortenResp.ShortCode)

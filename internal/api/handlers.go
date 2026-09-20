@@ -43,7 +43,11 @@ func (handler *Handler) ShortenHandler(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	shortCode := handler.store.AddUrl(params.Url)
+	shortCode, err := handler.store.AddUrl(params.Url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	redirectUrl := fmt.Sprintf("%s/%s", handler.baseUrl, shortCode)
 
 	w.Header().Set("Content-Type", "application/json")

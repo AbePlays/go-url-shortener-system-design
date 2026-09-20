@@ -1,7 +1,10 @@
-.PHONY: test build run dev fmt fmt-check vet clean docker-build docker-run
+.PHONY: test test-db build run dev fmt fmt-check vet clean docker-build docker-run compose-up compose-down compose-reset compose-logs
 
 test:
 	go test ./... -v
+
+test-db:
+	DATABASE_URL="postgres://postgres:postgres@localhost:5432/urlshortener?sslmode=disable" go test ./... -v
 
 build:
 	go build -o bin/server .
@@ -34,3 +37,15 @@ docker-build:
 
 docker-run:
 	docker run -p 8080:8080 url-shortener
+
+compose-up:
+	docker compose up --build
+
+compose-down:
+	docker compose down
+
+compose-reset:
+	docker compose down -v
+
+compose-logs:
+	docker compose logs -f
