@@ -57,7 +57,7 @@ func (handler *Handler) ShortenHandler(w http.ResponseWriter, req *http.Request)
 func (handler *Handler) RedirectHandler(w http.ResponseWriter, req *http.Request) {
 	code := req.PathValue("code")
 
-	url, err := handler.store.GetUrl(code)
+	url, err := handler.store.GetUrl(req.Context(), code)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

@@ -1,12 +1,15 @@
 package store_test
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"testing"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/redis/go-redis/v9"
 
+	"github.com/AbePlays/go-url-shortener-system-design/internal/cache"
 	"github.com/AbePlays/go-url-shortener-system-design/internal/store"
 )
 
@@ -31,6 +34,29 @@ func testDB(t *testing.T) *sql.DB {
 	return db
 }
 
+func testCache(t *testing.T) *cache.UrlCache {
+	t.Helper()
+
+	redisUrl := os.Getenv("REDIS_URL")
+	if redisUrl == "" {
+		t.Skip("REDIS_URL not set, skipping test that requires a real cache")
+	}
+
+	opts, err := redis.ParseURL(redisUrl)
+	if err != nil {
+		t.Fatalf("failed to parse redis url: %v", err)
+	}
+
+	client := redis.NewClient(opts)
+	t.Cleanup(func() { client.Close() })
+
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		t.Fatalf("failed to ping redis: %v", err)
+	}
+
+	return cache.New(client)
+}
+
 func cleanupCode(t *testing.T, db *sql.DB, code string) {
 	t.Helper()
 	t.Cleanup(func() {
@@ -40,7 +66,8 @@ func cleanupCode(t *testing.T, db *sql.DB, code string) {
 
 func TestAddUrlAndGetUrl(t *testing.T) {
 	db := testDB(t)
-	s := store.New(db)
+	c := testCache(t)
+	s := store.New(db, c)
 
 	url := "https://example.com"
 	code, err := s.AddUrl(url)
@@ -53,7 +80,9 @@ func TestAddUrlAndGetUrl(t *testing.T) {
 		t.Errorf("AddUrl() returned code of length %d, want 8", len(code))
 	}
 
-	got, err := s.GetUrl(code)
+	// AddUrl never touches the cache, so this call is guaranteed to be a
+	// cache miss - it must fall through to Postgres to succeed at all.
+	got, err := s.GetUrl(context.Background(), code)
 	if err != nil {
 		t.Fatalf("GetUrl(%q) returned unexpected error: %v", code, err)
 	}
@@ -63,11 +92,46 @@ func TestAddUrlAndGetUrl(t *testing.T) {
 	}
 }
 
+func TestGetUrl_CacheHit(t *testing.T) {
+	db := testDB(t)
+	c := testCache(t)
+	s := store.New(db, c)
+	ctx := context.Background()
+
+	url := "https://example.com"
+	code, err := s.AddUrl(url)
+	if err != nil {
+		t.Fatalf("AddUrl() returned unexpected error: %v", err)
+	}
+	cleanupCode(t, db, code)
+
+	// first call - cache miss, falls through to Postgres, populates cache
+	if _, err := s.GetUrl(ctx, code); err != nil {
+		t.Fatalf("first GetUrl(%q) returned unexpected error: %v", code, err)
+	}
+
+	// remove it from Postgres directly, so only the cache can possibly
+	// have it now - proves the next call genuinely comes from the cache
+	if _, err := db.Exec("DELETE FROM urls WHERE code = $1", code); err != nil {
+		t.Fatalf("failed to delete row directly: %v", err)
+	}
+
+	got, err := s.GetUrl(ctx, code)
+	if err != nil {
+		t.Fatalf("second GetUrl(%q) returned unexpected error (should have hit cache): %v", code, err)
+	}
+
+	if got != url {
+		t.Errorf("GetUrl(%q) = %q, want %q", code, got, url)
+	}
+}
+
 func TestGetUrl_NotFound(t *testing.T) {
 	db := testDB(t)
-	s := store.New(db)
+	c := testCache(t)
+	s := store.New(db, c)
 
-	_, err := s.GetUrl("doesnotexist")
+	_, err := s.GetUrl(context.Background(), "doesnotexist")
 	if err == nil {
 		t.Error("GetUrl() with unknown code expected an error, got nil")
 	}
@@ -75,7 +139,8 @@ func TestGetUrl_NotFound(t *testing.T) {
 
 func TestAddUrl_UniqueCodesForSameInput(t *testing.T) {
 	db := testDB(t)
-	s := store.New(db)
+	c := testCache(t)
+	s := store.New(db, c)
 
 	code1, err := s.AddUrl("https://example.com")
 	if err != nil {

@@ -1,19 +1,26 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
+	"time"
 
+	"github.com/AbePlays/go-url-shortener-system-design/internal/cache"
 	"github.com/AbePlays/go-url-shortener-system-design/utils"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+const cacheTtl = 24 * time.Hour
+
 type UrlStore struct {
-	db *sql.DB
+	db    *sql.DB
+	cache *cache.UrlCache
 }
 
-func New(db *sql.DB) *UrlStore {
-	return &UrlStore{db: db}
+func New(db *sql.DB, cache *cache.UrlCache) *UrlStore {
+	return &UrlStore{db: db, cache: cache}
 }
 
 func (s *UrlStore) AddUrl(url string) (string, error) {
@@ -34,15 +41,31 @@ func (s *UrlStore) AddUrl(url string) (string, error) {
 	}
 }
 
-func (s *UrlStore) GetUrl(code string) (string, error) {
+func (s *UrlStore) GetUrl(ctx context.Context, code string) (string, error) {
+	cachedUrl, err := s.cache.Get(ctx, code)
+	if err == nil {
+		slog.Info("cache hit", "code", code)
+		return cachedUrl, nil
+	}
+
+	if !errors.Is(err, cache.ErrCacheMiss) {
+		return "", err
+	}
+
+	slog.Info("cache miss", "code", code)
+
 	var url string
-	err := s.db.QueryRow("SELECT original_url from urls where code = $1", code).Scan(&url)
+	err = s.db.QueryRow("SELECT original_url from urls where code = $1", code).Scan(&url)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", errors.New("code not found")
 		}
 
 		return "", err
+	}
+
+	if err := s.cache.Set(ctx, code, url, cacheTtl); err != nil {
+		slog.Error("failed to populate cache", "code", code, "error", err)
 	}
 
 	return url, nil

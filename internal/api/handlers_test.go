@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -10,8 +11,10 @@ import (
 	"testing"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/AbePlays/go-url-shortener-system-design/internal/api"
+	"github.com/AbePlays/go-url-shortener-system-design/internal/cache"
 	"github.com/AbePlays/go-url-shortener-system-design/internal/store"
 )
 
@@ -36,9 +39,33 @@ func testDB(t *testing.T) *sql.DB {
 	return db
 }
 
+func testCache(t *testing.T) *cache.UrlCache {
+	t.Helper()
+
+	redisUrl := os.Getenv("REDIS_URL")
+	if redisUrl == "" {
+		t.Skip("REDIS_URL not set, skipping test that requires a real cache")
+	}
+
+	opts, err := redis.ParseURL(redisUrl)
+	if err != nil {
+		t.Fatalf("failed to parse redis url: %v", err)
+	}
+
+	client := redis.NewClient(opts)
+	t.Cleanup(func() { client.Close() })
+
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		t.Fatalf("failed to ping redis: %v", err)
+	}
+
+	return cache.New(client)
+}
+
 func TestShortenAndRedirect(t *testing.T) {
 	db := testDB(t)
-	s := store.New(db)
+	c := testCache(t)
+	s := store.New(db, c)
 	h := api.New(s, "http://localhost:8080")
 
 	body, err := json.Marshal(api.ShortenRequest{Url: "https://example.com"})

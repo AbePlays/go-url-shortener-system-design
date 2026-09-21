@@ -4,7 +4,9 @@ test:
 	go test ./... -v
 
 test-db:
-	DATABASE_URL="postgres://postgres:postgres@localhost:5432/urlshortener?sslmode=disable" go test ./... -v
+	DATABASE_URL="postgres://postgres:postgres@localhost:5432/urlshortener?sslmode=disable" \
+	REDIS_URL="redis://localhost:6379" \
+	go test ./... -v
 
 build:
 	go build -o bin/server .
