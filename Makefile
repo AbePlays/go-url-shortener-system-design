@@ -1,4 +1,4 @@
-.PHONY: test test-db build run dev fmt fmt-check vet clean docker-build docker-run compose-up compose-down compose-reset compose-logs
+.PHONY: test test-db build run dev fmt fmt-check vet clean docker-build docker-run compose-up compose-down compose-reset compose-logs migrate-up migrate-down
 
 test:
 	go test ./... -v
@@ -51,3 +51,9 @@ compose-reset:
 
 compose-logs:
 	docker compose logs -f
+
+migrate-up:
+	migrate -path db/migrations -database "postgres://postgres:postgres@localhost:5432/urlshortener?sslmode=disable" up
+
+migrate-down:
+	migrate -path db/migrations -database "postgres://postgres:postgres@localhost:5432/urlshortener?sslmode=disable" down 1
