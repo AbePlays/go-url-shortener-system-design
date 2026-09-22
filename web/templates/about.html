@@ -73,7 +73,7 @@
     }
 
     main {
-      max-width: 560px;
+      max-width: 760px;
       margin: 2.75rem auto;
       padding: 0 1.25rem;
     }
@@ -119,6 +119,11 @@
       margin-bottom: 0.35rem;
     }
 
+    .ext-link {
+      color: #0f766e;
+      text-decoration: none;
+    }
+
     .footer-note {
       margin-top: 1.75rem;
       padding-top: 1.25rem;
@@ -147,12 +152,18 @@
         but to practice real system design thinking.
       </p>
 
-      <h2>What’s under the hood</h2>
+      <h2>What's under the hood</h2>
       <ul>
         <li>PostgreSQL as the source of truth</li>
-        <li>Redis for speedy reads</li>
-        <li>Primary + read replica setup</li>
+        <li>Redis for cache-aside reads</li>
+        <li>Schema managed via versioned migrations</li>
         <li>Honest trade-offs around consistency and lag</li>
+        <li>Click analytics per short link</li>
+      </ul>
+
+      <h2>Planned</h2>
+      <ul>
+        <li>Primary + read replica setup, for horizontal read scaling</li>
       </ul>
 
       <h2>Tech stack</h2>
@@ -162,6 +173,12 @@
         <li>Docker Compose</li>
         <li>Plain HTML & CSS (no JavaScript)</li>
       </ul>
+
+      <h2>Source</h2>
+      <p>
+        This project is open source.
+        <a class="ext-link" href="https://github.com/AbePlays/go-url-shortener-system-design" target="_blank" rel="noopener">View it on GitHub</a>.
+      </p>
 
       <p class="footer-note">
         Made for learning system design the hands-on way.

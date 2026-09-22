@@ -158,3 +158,29 @@ func TestAddUrl_UniqueCodesForSameInput(t *testing.T) {
 		t.Errorf("AddUrl() called twice with the same URL returned the same code: %q", code1)
 	}
 }
+
+func TestListUrls(t *testing.T) {
+	db := testDB(t)
+	c := testCache(t)
+	s := store.New(db, c)
+
+	before, err := s.ListUrls(context.Background())
+	if err != nil {
+		t.Fatalf("ListUrls() returned unexpected error: %v", err)
+	}
+
+	code, err := s.AddUrl("https://example.com")
+	if err != nil {
+		t.Fatalf("AddUrl() returned unexpected error: %v", err)
+	}
+	cleanupCode(t, db, code)
+
+	after, err := s.ListUrls(context.Background())
+	if err != nil {
+		t.Fatalf("ListUrls() returned unexpected error: %v", err)
+	}
+
+	if len(after) != len(before)+1 {
+		t.Errorf("ListUrls() length = %d, want %d", len(after), len(before)+1)
+	}
+}

@@ -1,7 +1,8 @@
 # Go URL Shortener – System Design
 
-A production-shaped URL shortener built in Go.
-This project focuses on **system design maturity** — caching, replication, failure modes, and trade-offs — rather than just a working demo.
+A production-shaped URL shortener built in Go. This project focuses on **system design maturity** — caching, persistence, failure modes, and honest trade-offs — rather than just a working demo.
+
+**Live:** https://go-url-shortener-system-design.onrender.com
 
 ## Goal
 
@@ -11,26 +12,29 @@ Build a URL shortener that demonstrates real backend engineering judgment:
 - Durable storage
 - Clear separation of concerns
 - Explicit handling of consistency and failure
-- A simple but usable web interface
+- A simple, usable web interface — no JavaScript
 
 ## Requirements
 
 ### Functional
+
 - Shorten a long URL into a short, shareable link
 - Redirect from short link to original URL
-- Basic click counting
-- Simple web UI for creating short links
+- Click count tracking per link
+- Simple web UI for creating and browsing short links
 
 ### Non-Functional
+
 - Low latency on the redirect path
 - Data survives process restarts
 - Read-heavy workload support
-- Design that can scale horizontally later
+- Schema changes tracked and reversible via migrations
 
 ### Out of Scope (v1)
+
 - Custom aliases
 - User accounts / authentication
-- Advanced analytics
+- Advanced analytics beyond click counts
 - Rate limiting (planned as a separate project)
 
 ## High-Level Architecture
@@ -38,197 +42,176 @@ Build a URL shortener that demonstrates real backend engineering judgment:
 ```
 Browser
    │
-   ▼
-Load Balancer
+   ├──► Web pages (Go html/template, server-rendered, no JS)
    │
    ▼
-Go App Servers (stateless)
+Go App Server
    │
-   ├──► Redis (cache)
+   ├──► Redis (cache-aside)
    │
-   └──► PostgreSQL
-          ├── Primary   (writes)
-          └── Replica   (reads)
+   └──► PostgreSQL (source of truth)
 ```
 
 **Core principles:**
-- Application servers are stateless
-- PostgreSQL is the source of truth
-- Redis sits in front of reads for hot keys
-- Writes always go to the primary
-- Reads prefer the replica + cache
+
+- The app server is stateless
+- PostgreSQL is the single source of truth
+- Redis sits in front of reads for hot keys, populated lazily
+- Writes always go straight to Postgres
+- The web frontend is a thin BFF layer over the same store — no separate API round-trip
 
 ## Design Evolution
 
-The system is grown in deliberate stages instead of jumping straight to a distributed design.
+The system was grown in deliberate stages instead of jumping straight to a distributed design.
 
 ### Stage 1 – MVP
+
 - Single Go process
 - In-memory map protected by `sync.RWMutex`
 - Basic shorten + redirect
 - No persistence
 
-**Purpose:** Validate the core flow quickly.
-**Limitation:** Data is lost on restart; cannot scale beyond one process.
-
 ### Stage 2 – Single Instance Production
-- Environment-based configuration
-- Graceful shutdown
+
+- Environment-based configuration, fail-fast on missing config
+- Graceful shutdown (`SIGTERM`/`SIGINT`, in-flight requests drained)
 - URL validation
 - Collision handling on key generation
-- Structured logging
-
-Still single-process, but production hygiene is in place.
+- Structured logging (`log/slog`)
+- Dockerized, CI/CD via GitHub Actions
 
 ### Stage 3 – Durable Storage (PostgreSQL)
 
-PostgreSQL becomes the source of truth.
+PostgreSQL is the source of truth. Schema is managed through versioned migrations (`golang-migrate`), not a static init script — every schema change is a small, reversible, ordered file under `db/migrations/`.
 
 ```sql
-CREATE TABLE urls (
+CREATE TABLE IF NOT EXISTS urls (
     code         CHAR(8) PRIMARY KEY,
     original_url TEXT NOT NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     clicks       BIGINT NOT NULL DEFAULT 0
 );
-
-CREATE INDEX idx_urls_original ON urls (original_url);
 ```
 
-**Why PostgreSQL?**
-- Strong consistency and unique constraints
-- Excellent Go support (`pgx`)
-- Natural path to read replicas
-- Easy to reason about
+Short-code collisions are handled by attempting the insert and retrying only on a genuine primary-key violation (Postgres error `23505`) — no separate existence check before every write.
 
-At this stage every redirect still hits the database.
+**Why PostgreSQL?** Strong consistency and unique constraints, excellent Go support (`pgx`), and a natural fit for the read-heavy, write-light access pattern this project has.
 
 ### Stage 4 – Caching Layer (Redis)
 
-Most traffic is reads. Redis is introduced as a cache in front of PostgreSQL.
+Most traffic is reads. Redis sits in front of PostgreSQL using a cache-aside strategy:
 
-**Strategy:** Cache-aside
 - Check Redis first on redirect
-- On miss → load from Postgres → populate cache
-- Writes go to Postgres (cache is optionally warmed)
+- On miss → load from Postgres → populate cache → return
+- Writes go straight to Postgres; the cache is never written to on write, only lazily on the next read
 
-**TTL:** 24 hours (configurable)
+**TTL:** 24 hours. **Trade-off:** a short window of possible staleness, acceptable for this use case — links are immutable, so staleness only ever affects freshly-created links that haven't been read yet.
 
-**Trade-off:** Possible short window of inconsistency, which is acceptable for this use case.
+A Redis failure never breaks a redirect: cache errors are logged and the request falls through to Postgres.
 
-### Stage 5 – Read Scaling (Primary + Replica)
+### Stage 5 – Read Scaling (Primary + Replica) — Planned
 
-- All writes go to the **Primary**
-- Redirects prefer the **Replica**
-- Application is aware of replication lag
-
-A newly created short link may not be immediately visible on the replica. The cache helps hide most of this lag for popular links.
+Designed, not implemented. All writes would go to the primary; redirects would prefer a read replica, with the application aware of replication lag. Deliberately deferred: real Postgres streaming replication is a meaningfully different scope of work from anything else in this project, and the learning goal (application-level read/write routing) doesn't require it to be built by hand to be understood.
 
 ### Stage 6 – Future Scaling (Design Only)
-
-These are designed but not fully implemented:
 
 - Sharding by short-code prefix
 - Redis Cluster
 - Multi-region deployment
-- Separate analytics pipeline (clicks → queue → aggregator)
 
 ## Key Design Decisions
 
 ### Short Code Generation
+
 - 8-character Base62 (`0-9a-zA-Z`)
 - ~218 trillion possible combinations
-- Collision handling via retry
-- Length chosen for a good balance between brevity and collision resistance
+- Collision handling via retry on insert, not a pre-check
+
+### Click Tracking
+
+- Incremented atomically in Postgres (`UPDATE urls SET clicks = clicks + 1`), never read-modify-write in application code
+- Fired off asynchronously after a successful redirect, so click tracking never adds latency to the redirect path itself
 
 ### Consistency Model
-- Strong consistency on the write path (Postgres primary)
-- Read-your-writes is **not** strictly guaranteed when reading from the replica
+
+- Strong consistency on the write path (Postgres)
 - Cache may serve slightly stale data within the TTL window
 
 ### Failure Handling
-| Failure | Behavior |
-|---------|----------|
-| Redis down | Fall back to Postgres |
-| Replica lag / down | Fall back to primary |
-| Primary down | Writes fail; reads may still succeed from cache/replica |
+
+| Failure     | Behavior                                      |
+| ----------- | ---------------------------------------------- |
+| Redis down  | Falls back to Postgres; logged, not fatal       |
+| Postgres down | Requests fail; no silent fallback              |
 
 ## API Design
 
-```http
+```
 POST /api/shorten
 Content-Type: application/json
 
-{
-  "url": "https://example.com/very/long/path"
-}
+{ "url": "https://example.com/very/long/path" }
 ```
 
 **Response:**
+
 ```json
 {
-  "code": "aB3xY9kL",
-  "short_url": "https://short.example/aB3xY9kL"
+  "shortCode": "aB3xY9kL",
+  "url": "https://go-url-shortener-system-design.onrender.com/aB3xY9kL"
 }
 ```
 
-```http
+```
 GET /{code}
-→ 301/302 redirect to original URL
+→ 302 redirect to the original URL
 ```
-
-```http
-GET /stats/{code}   (optional)
-→ click count + metadata
-```
-
-The web UI uses the same backend via HTMX.
 
 ## Frontend
 
-- Server-rendered or static HTML + CSS
-- Vanilla JavaScript (Fetch API) for interacting with the backend
-- Minimal and dependency-free
+Server-rendered with Go's `html/template`, no JavaScript. The form on `/` posts to `POST /shorten`, which acts as a small BFF — it calls the same store the JSON API uses, then re-renders the page with the result, rather than round-tripping through the API itself.
+
+- `GET /` — shorten form
+- `GET /links` — table of every shortened link, with click counts
+- `GET /about` — project overview
 
 ## Implementation Status
 
-| Stage                        | Status          |
-|-----------------------------|-----------------|
-| MVP (in-memory)             | Implemented     |
-| Production hygiene          | Implemented     |
-| PostgreSQL                  | Implemented     |
-| Redis cache                 | Implemented     |
-| Primary + Read Replica      | Implemented     |
-| Sharding / Multi-region     | Designed only   |
-| Auth / Rate limiting        | Future projects |
-
-## Trade-offs Summary
-
-| Decision              | Benefit                          | Cost                              |
-|-----------------------|----------------------------------|-----------------------------------|
-| Postgres as source of truth | Durability + strong constraints | Higher latency than pure Redis   |
-| Cache-aside Redis     | Very fast redirects              | Possible brief inconsistency      |
-| Async replica         | Scales reads cleanly             | Replication lag                   |
-| 8-char Base62         | Huge keyspace, still short       | Slightly longer than 6–7 chars    |
-| HTMX frontend         | Simple and fast to build         | Less “app-like” than a full SPA   |
+| Stage                    | Status         |
+| ------------------------- | -------------- |
+| MVP (in-memory)           | Implemented    |
+| Production hygiene        | Implemented    |
+| PostgreSQL + migrations   | Implemented    |
+| Redis cache                | Implemented    |
+| Click analytics            | Implemented    |
+| Frontend (server-rendered) | Implemented    |
+| Primary + Read Replica     | Planned        |
+| Sharding / Multi-region    | Designed only  |
+| Auth / Rate limiting       | Future projects |
 
 ## Tech Stack
 
 - **Language:** Go
-- **Database:** PostgreSQL
-- **Cache:** Redis
-- **Frontend:** Go templates + HTMX
+- **Database:** PostgreSQL (Neon in production)
+- **Cache:** Redis (Upstash in production)
+- **Migrations:** golang-migrate
+- **Frontend:** Go `html/template`, no JavaScript
 - **Containerization:** Docker + Docker Compose
+- **CI/CD:** GitHub Actions (format, vet, test against real Postgres + Redis service containers, build)
+- **Hosting:** Render
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/<your-username>/go-url-shortener-system-design.git
+git clone https://github.com/AbePlays/go-url-shortener-system-design.git
 cd go-url-shortener-system-design
-docker compose up --build
+make compose-up      # starts app + Postgres + Redis
+make migrate-up       # applies the schema
 ```
 
-The service will be available at `http://localhost:8080`.
+The app is available at `http://localhost:8080`.
+
+See the `Makefile` for the full set of available commands (tests, formatting, linting, Docker, migrations).
 
 ## License
 

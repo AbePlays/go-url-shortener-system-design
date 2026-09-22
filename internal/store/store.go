@@ -98,7 +98,6 @@ func (s *UrlStore) ListUrls(ctx context.Context) ([]Url, error) {
 		if err := rows.Scan(&url.Code, &url.OriginalUrl, &url.Clicks, &url.CreatedAt); err != nil {
 			return nil, err
 		}
-		url.CreatedAt = time.Time(url.CreatedAt)
 		urls = append(urls, url)
 	}
 

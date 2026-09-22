@@ -12,13 +12,14 @@ import (
 
 	"github.com/AbePlays/go-url-shortener-system-design/internal/api"
 	"github.com/AbePlays/go-url-shortener-system-design/internal/cache"
+	"github.com/AbePlays/go-url-shortener-system-design/internal/config"
 	"github.com/AbePlays/go-url-shortener-system-design/internal/store"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/redis/go-redis/v9"
 )
 
 func main() {
-	config := getConfig()
+	config := config.GetConfig()
 
 	db, err := sql.Open("pgx", config.DatabaseUrl)
 	if err != nil {
@@ -83,36 +84,4 @@ func main() {
 	}
 
 	log.Println("server shut down gracefully")
-}
-
-type Config struct {
-	BaseUrl     string
-	DatabaseUrl string
-	Port        string
-	RedisUrl    string
-}
-
-func requireEnv(key string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		log.Fatalf("%s environment variable not set", key)
-	}
-
-	return value
-}
-
-func getConfig() Config {
-	baseUrl := requireEnv("BASE_URL")
-	databaseUrl := requireEnv("DATABASE_URL")
-	port := requireEnv("PORT")
-	redisUrl := requireEnv("REDIS_URL")
-
-	config := Config{
-		BaseUrl:     baseUrl,
-		DatabaseUrl: databaseUrl,
-		Port:        port,
-		RedisUrl:    redisUrl,
-	}
-
-	return config
 }
