@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔗</text></svg>">
-  <title>About tiny.link</title>
+  <title>Lost in the void – tiny.link</title>
   <style>
     :root {
       --bg: #fff7ed;
@@ -25,7 +25,7 @@
         radial-gradient(circle at 20% 20%, #ffedd5 0%, transparent 40%),
         radial-gradient(circle at 80% 80%, #fed7aa 0%, transparent 35%);
       color: var(--text);
-      line-height: 1.65;
+      line-height: 1.6;
       min-height: 100vh;
     }
 
@@ -66,8 +66,7 @@
       border-radius: 999px;
     }
 
-    nav .links a:hover,
-    nav .links a.active {
+    nav .links a:hover {
       background: var(--accent-soft);
       color: var(--accent);
     }
@@ -76,60 +75,56 @@
       max-width: 760px;
       margin: 3rem auto;
       padding: 0 1.25rem;
+      text-align: center;
     }
 
     .card {
       background: var(--surface);
       border: 2px solid var(--border);
       border-radius: 24px;
-      padding: 2.25rem 2rem;
+      padding: 2.75rem 2rem;
       box-shadow: 6px 6px 0 var(--border);
     }
 
     .emoji {
-      font-size: 2.25rem;
-      margin-bottom: 0.5rem;
+      font-size: 3.5rem;
+      margin-bottom: 0.75rem;
+      line-height: 1;
     }
 
     h1 {
-      font-size: 1.6rem;
+      font-size: 1.75rem;
       font-weight: 800;
       letter-spacing: -0.03em;
-      margin-bottom: 0.85rem;
-    }
-
-    h2 {
-      font-size: 1.05rem;
-      font-weight: 750;
-      margin: 1.6rem 0 0.5rem;
-      color: var(--accent);
+      margin-bottom: 0.5rem;
     }
 
     p {
-      color: #7c2d12;
-      margin-bottom: 0.85rem;
-    }
-
-    ul {
-      margin: 0.35rem 0 1rem 1.15rem;
-      color: #7c2d12;
-    }
-
-    li {
-      margin-bottom: 0.35rem;
-    }
-
-    .ext-link {
-      color: #0f766e;
-      text-decoration: none;
-    }
-
-    .footer-note {
-      margin-top: 1.75rem;
-      padding-top: 1.25rem;
-      border-top: 2px dashed var(--border);
       color: var(--muted);
-      font-size: 0.9rem;
+      margin-bottom: 1.75rem;
+      font-size: 1.05rem;
+    }
+
+    a.button {
+      display: inline-block;
+      padding: 0.85rem 1.6rem;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      font-weight: 700;
+      border-radius: 14px;
+      box-shadow: 0 4px 0 #c2410c;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    a.button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 0 #c2410c;
+    }
+
+    a.button:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #c2410c;
     }
   </style>
 </head>
@@ -138,51 +133,16 @@
     <a href="/" class="brand">tiny<span>.link</span></a>
     <div class="links">
       <a href="/links">Links</a>
-      <a href="/about" class="active">About</a>
+      <a href="/about">About</a>
     </div>
   </nav>
 
   <main>
     <div class="card">
-      <div class="emoji">🧪</div>
-      <h1>About this little project</h1>
-
-      <p>
-        This is a URL shortener built in Go — not just to work,
-        but to practice real system design thinking.
-      </p>
-
-      <h2>What's under the hood</h2>
-      <ul>
-        <li>PostgreSQL as the source of truth</li>
-        <li>Redis for cache-aside reads</li>
-        <li>Schema managed via versioned migrations</li>
-        <li>Honest trade-offs around consistency and lag</li>
-        <li>Click analytics per short link</li>
-      </ul>
-
-      <h2>Planned</h2>
-      <ul>
-        <li>Primary + read replica setup, for horizontal read scaling</li>
-      </ul>
-
-      <h2>Tech stack</h2>
-      <ul>
-        <li>Go</li>
-        <li>PostgreSQL + Redis</li>
-        <li>Docker Compose</li>
-        <li>Plain HTML & CSS (no JavaScript)</li>
-      </ul>
-
-      <h2>Source</h2>
-      <p>
-        This project is open source.
-        <a class="ext-link" href="https://github.com/AbePlays/go-url-shortener-system-design" target="_blank" rel="noopener">View it on GitHub</a>.
-      </p>
-
-      <p class="footer-note">
-        Made for learning system design the hands-on way.
-      </p>
+      <div class="emoji">🧭</div>
+      <h1>404 – Page not found</h1>
+      <p>This link wandered off into the void. It might be broken, deleted, or never existed.</p>
+      <a href="/" class="button">Back to safety ✨</a>
     </div>
   </main>
 </body>

@@ -68,7 +68,7 @@ func (handler *Handler) RedirectHandler(w http.ResponseWriter, req *http.Request
 
 	url, err := handler.store.GetUrl(req.Context(), code)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		notFoundTpl.Execute(w, nil)
 		return
 	}
 

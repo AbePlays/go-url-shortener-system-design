@@ -32,6 +32,7 @@ var templatesDir = func() string {
 var indexTpl = template.Must(template.ParseFiles(filepath.Join(templatesDir, "index.html")))
 var linksTpl = template.Must(template.ParseFiles(filepath.Join(templatesDir, "links.html")))
 var aboutTpl = template.Must(template.ParseFiles(filepath.Join(templatesDir, "about.html")))
+var notFoundTpl = template.Must(template.ParseFiles(filepath.Join(templatesDir, "404.html")))
 
 func (handler *Handler) ShortenFormHandler(w http.ResponseWriter, req *http.Request) {
 	err := req.ParseForm()
