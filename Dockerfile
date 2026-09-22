@@ -15,6 +15,7 @@ WORKDIR /app
 COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
 COPY --from=builder /app/server .
 COPY db/migrations ./db/migrations
+COPY web/templates ./web/templates
 
 ENV BASE_URL=http://localhost:8080
 ENV PORT=8080

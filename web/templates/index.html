@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔗</text></svg>">
+  <title>tiny link ✨</title>
+  <style>
+    :root {
+      --bg: #fff7ed;
+      --surface: #ffffff;
+      --text: #431407;
+      --muted: #9a3412;
+      --accent: #ea580c;
+      --accent-soft: #ffedd5;
+      --border: #fed7aa;
+      --success-bg: #ecfdf5;
+      --success-border: #a7f3d0;
+      --success-text: #065f46;
+      --error-bg: #fef2f2;
+      --error-border: #fecaca;
+      --error-text: #991b1b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      background-image:
+        radial-gradient(circle at 20% 20%, #ffedd5 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, #fed7aa 0%, transparent 35%);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      padding: 1rem 1.75rem;
+      background: rgba(255,255,255,0.75);
+      backdrop-filter: blur(8px);
+      border-bottom: 2px dashed var(--border);
+    }
+
+    nav .brand {
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+
+    nav .brand span {
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    nav .links {
+      margin-left: auto;
+      display: flex;
+      gap: 1.25rem;
+    }
+
+    nav .links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    nav .links a:hover,
+    nav .links a.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    main {
+      max-width: 480px;
+      margin: 3rem auto;
+      padding: 0 1.25rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 2.25rem 2rem;
+      box-shadow: 6px 6px 0 var(--border);
+    }
+
+    .emoji {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.35rem;
+      color: var(--text);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input[type="url"] {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      font-size: 1rem;
+      background: #fffbeb;
+      color: var(--text);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    input[type="url"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+
+    button {
+      margin-top: 1.1rem;
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #c2410c;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 0 #c2410c;
+    }
+
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #c2410c;
+    }
+
+    .result {
+      margin-top: 1.5rem;
+      padding: 1.15rem 1.25rem;
+      background: var(--success-bg);
+      border: 2px dashed var(--success-border);
+      border-radius: 16px;
+    }
+
+    .result .label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--success-text);
+      margin-bottom: 0.35rem;
+    }
+
+    .result a {
+      color: var(--success-text);
+      font-weight: 700;
+      word-break: break-all;
+      text-decoration: none;
+    }
+
+    .result a:hover {
+      text-decoration: underline;
+    }
+
+    .error {
+      margin-top: 1.5rem;
+      padding: 1.15rem 1.25rem;
+      background: var(--error-bg);
+      border: 2px dashed var(--error-border);
+      border-radius: 16px;
+      color: var(--error-text);
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/" class="brand">tiny<span>.link</span></a>
+    <div class="links">
+      <a href="/links">Links</a>
+      <a href="/about">About</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="card">
+      <div class="emoji">🪄</div>
+      <h1>Make it tiny</h1>
+      <p class="subtitle">Drop a long URL. Get a short one. Magic.</p>
+
+      <form method="POST" action="/shorten">
+        <label for="url">Your long link</label>
+        <input
+          type="url"
+          id="url"
+          name="url"
+          placeholder="https://example.com/super/long/path"
+          required
+        >
+        <button type="submit">Shrink it ✨</button>
+      </form>
+
+      {{ if .ShortURL }}
+      <div class="result">
+        <div class="label">Your tiny link</div>
+        <a href="{{ .ShortURL }}">{{ .ShortURL }}</a>
+      </div>
+      {{ end }}
+
+      {{ if .Error }}
+      <div class="error">{{ .Error }}</div>
+      {{ end }}
+    </div>
+  </main>
+</body>
+</html>

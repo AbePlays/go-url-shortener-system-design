@@ -47,6 +47,15 @@ func main() {
 	handler := api.New(urlStore, config.BaseUrl)
 
 	mux := http.NewServeMux()
+	// Frontend Routes
+	mux.HandleFunc("GET /{$}", handler.IndexWebHandler)
+	mux.HandleFunc("GET /about", handler.AboutWebHandler)
+	mux.HandleFunc("GET /links", handler.LinksWebHandler)
+
+	// BFF Routes
+	mux.HandleFunc("POST /shorten", handler.ShortenFormHandler)
+
+	// Backend Routes
 	mux.Handle("POST /api/shorten", api.LoggingMiddleware(http.HandlerFunc(handler.ShortenHandler)))
 	mux.Handle("GET /{code}", api.LoggingMiddleware(http.HandlerFunc(handler.RedirectHandler)))
 

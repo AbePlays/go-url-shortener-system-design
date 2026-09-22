@@ -19,6 +19,13 @@ type UrlStore struct {
 	cache *cache.UrlCache
 }
 
+type Url struct {
+	Code        string
+	OriginalUrl string
+	Clicks      int
+	CreatedAt   time.Time
+}
+
 func New(db *sql.DB, cache *cache.UrlCache) *UrlStore {
 	return &UrlStore{db: db, cache: cache}
 }
@@ -72,6 +79,30 @@ func (s *UrlStore) GetUrl(ctx context.Context, code string) (string, error) {
 	go s.incrementClicks(code)
 
 	return url, nil
+}
+
+func (s *UrlStore) ListUrls(ctx context.Context) ([]Url, error) {
+	var urls []Url
+	rows, err := s.db.Query("SELECT code, original_url, clicks, created_at FROM urls")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		if rows.Err() != nil {
+			return nil, rows.Err()
+		}
+
+		var url Url
+		if err := rows.Scan(&url.Code, &url.OriginalUrl, &url.Clicks, &url.CreatedAt); err != nil {
+			return nil, err
+		}
+		url.CreatedAt = time.Time(url.CreatedAt)
+		urls = append(urls, url)
+	}
+
+	return urls, nil
 }
 
 func (s *UrlStore) incrementClicks(code string) {
