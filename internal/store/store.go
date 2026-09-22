@@ -45,6 +45,7 @@ func (s *UrlStore) GetUrl(ctx context.Context, code string) (string, error) {
 	cachedUrl, err := s.cache.Get(ctx, code)
 	if err == nil {
 		slog.Info("cache hit", "code", code)
+		go s.incrementClicks(code)
 		return cachedUrl, nil
 	}
 
@@ -68,5 +69,14 @@ func (s *UrlStore) GetUrl(ctx context.Context, code string) (string, error) {
 		slog.Error("failed to populate cache", "code", code, "error", err)
 	}
 
+	go s.incrementClicks(code)
+
 	return url, nil
+}
+
+func (s *UrlStore) incrementClicks(code string) {
+	_, err := s.db.Exec("UPDATE urls SET clicks = clicks + 1 WHERE code = $1", code)
+	if err != nil {
+		slog.Error("failed to increment clicks", "code", code, "error", err)
+	}
 }
