@@ -13,9 +13,6 @@ import (
 	"github.com/AbePlays/go-url-shortener-system-design/utils"
 )
 
-// templatesDir is resolved relative to this source file's location, so template
-// loading works regardless of the process's current working directory (e.g. when
-// running `go test` from a subpackage).
 var templatesDir = func() string {
 	_, file, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(file)

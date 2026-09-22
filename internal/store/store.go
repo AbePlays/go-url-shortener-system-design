@@ -83,7 +83,7 @@ func (s *UrlStore) GetUrl(ctx context.Context, code string) (string, error) {
 
 func (s *UrlStore) ListUrls(ctx context.Context) ([]Url, error) {
 	var urls []Url
-	rows, err := s.db.Query("SELECT code, original_url, clicks, created_at FROM urls")
+	rows, err := s.db.Query("SELECT code, original_url, clicks, created_at FROM urls ORDER BY created_at DESC")
 	if err != nil {
 		return nil, err
 	}
